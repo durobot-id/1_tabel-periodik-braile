@@ -138,6 +138,7 @@ const int jumlahElemen = sizeof(tabelPeriodik) / sizeof(tabelPeriodik[0]);
 void setup() {
   Serial.begin(115200);       // ke PC
   Serial1.begin(9600, SERIAL_8N1, 20, 21); // RX=20, TX=21
+
   
   Serial.println("=== ESP32-C3 Periodic Table Receiver ===");
   Serial.println("Menunggu nomor atom dari ESP32...");
