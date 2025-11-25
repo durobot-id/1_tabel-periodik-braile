@@ -1,4 +1,8 @@
 #include <Arduino.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 // Struktur data untuk tabel periodik
 struct Element {
@@ -135,10 +139,27 @@ Element tabelPeriodik[] = {
 
 const int jumlahElemen = sizeof(tabelPeriodik) / sizeof(tabelPeriodik[0]);
 
+void centerText(int row, const char* text) {
+  int len = strlen(text);
+  int start = (20 - len) / 2;     // posisi kolom mulai
+  if (start < 0) start = 0;
+  lcd.setCursor(start, row);
+  lcd.print(text);
+}
+
+
 void setup() {
   Serial.begin(115200);       // ke PC
   Serial1.begin(9600, SERIAL_8N1, 20, 21); // RX=20, TX=21
 
+  lcd.init();        // Inisialisasi LCD
+  lcd.backlight();   // Nyalakan lampu LCD
+
+  cd.clear();
+  centerText(0, "WELCOME TO");
+  centerText(1, "TABEL PERIODIK");
+  centerText(2, "BRAILE");
+  centerText(3, ".....");
   
   Serial.println("=== ESP32-C3 Periodic Table Receiver ===");
   Serial.println("Menunggu nomor atom dari ESP32...");
@@ -163,6 +184,21 @@ void loop() {
         Serial.printf("Nomor Atom  : %d\n", tabelPeriodik[i].atomic_number);
         Serial.printf("Massa Atom  : %.4f u\n", tabelPeriodik[i].atomic_mass);
         Serial.println("============================");
+
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Simbol: ");
+        lcd.print(tabelPeriodik[i].symbol);
+        lcd.setCursor(1, 0);
+        lcd.print("Nama: ");
+        lcd.print(tabelPeriodik[i].name);
+        lcd.setCursor(2, 0);
+        lcd.print("N.Atom: ");
+        lcd.print(tabelPeriodik[i].atomic_number);
+        lcd.setCursor(3, 0);
+        lcd.print("M.Atom: ");
+        lcd.print(tabelPeriodik[i].atomic_mass);
+        
         ditemukan = true;
         break;
       }
