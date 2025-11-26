@@ -5,7 +5,7 @@
 //
 // ---- Konfigurasi PCF8575 ----
 //
-#define NUM_MODULES 6
+#define NUM_MODULES 8
 #define BASE_ADDR  0x20
 const unsigned long READ_INTERVAL = 50; // ms antar baca
 unsigned long lastRead = 0;
@@ -42,6 +42,31 @@ bool writePCF8575(uint8_t addr, uint16_t value) {
   return (Wire.endTransmission() == 0);
 }
 
+int computeIndexFromString(const char* nilai) {
+  int len = strlen(nilai);
+  if (len < 3) return -1; // error: input terlalu pendek
+
+  // ambil dua digit terakhir sebagai integer (mirip int(nilai[-2:]) di Python)
+  int lastTwo = atoi(nilai + len - 2); // "03" -> 3, "12" -> 12
+
+  // aturan: jika > 7 maka dikurangi 2
+  int angka;
+  if (lastTwo > 7) {
+    angka = lastTwo - 2;
+  } else {
+    angka = lastTwo;
+  }
+
+  // ambil karakter ke-3 dari belakang sebagai digit tunggal (mirip int(nilai[-3]))
+  char ch = nilai[len - 3];
+  int digitTunggal = ch - '0'; // pastikan ch adalah '0'..'9'
+  if (digitTunggal < 0 || digitTunggal > 9) return -1; // error: bukan digit
+
+  // hasil akhir
+  int index = (digitTunggal * 16) + angka + 1;
+  return index;
+}
+
 //
 // ---- Setup ----
 //
@@ -71,7 +96,7 @@ void setup() {
   }
 
   Serial.println("DFPlayer berhasil terhubung!");
-  myDFPlayer.volume(25);
+  myDFPlayer.volume(30);
 }
 
 //
@@ -101,11 +126,13 @@ void loop() {
           Serial.println(index);
 
           // Konversi ke integer untuk nomor lagu
-          int songNumber = atoi(index);
+          // int songNumber = atoi(index);
+          int idx = computeIndexFromString(index);
+          // Serial.println(idx);
 
           // Serial.print("Memutar lagu nomor ");
           // Serial.println(songNumber);
-          myDFPlayer.play(songNumber);
+          myDFPlayer.play(idx);
         }
         // 🔹 Jika tombol dilepas, reset flag
         else if (!pressedNow && isPressed[mod][bit]) {
