@@ -149,13 +149,13 @@ void centerText(int row, const char* text) {
 
 
 void setup() {
-  Serial.begin(115200);       // ke PC
-  Serial1.begin(9600, SERIAL_8N1, 20, 21); // RX=20, TX=21
+  Serial.begin(9600);       // ke PC
+  Serial1.begin(115200, SERIAL_8N1, 20, 21); // RX=20, TX=21
 
   lcd.init();        // Inisialisasi LCD
   lcd.backlight();   // Nyalakan lampu LCD
 
-  cd.clear();
+  lcd.clear();
   centerText(0, "WELCOME TO");
   centerText(1, "TABEL PERIODIK");
   centerText(2, "BRAILE");
@@ -163,6 +163,7 @@ void setup() {
   
   Serial.println("=== ESP32-C3 Periodic Table Receiver ===");
   Serial.println("Menunggu nomor atom dari ESP32...");
+
 }
 
 void loop() {
@@ -187,17 +188,17 @@ void loop() {
 
         lcd.clear();
         lcd.setCursor(0, 0);
+        lcd.print("Nama  : ");
+        lcd.print(tabelPeriodik[i].name);
+        lcd.setCursor(0, 1);
         lcd.print("Simbol: ");
         lcd.print(tabelPeriodik[i].symbol);
-        lcd.setCursor(1, 0);
-        lcd.print("Nama: ");
-        lcd.print(tabelPeriodik[i].name);
-        lcd.setCursor(2, 0);
+        lcd.setCursor(0, 2);
         lcd.print("N.Atom: ");
         lcd.print(tabelPeriodik[i].atomic_number);
-        lcd.setCursor(3, 0);
+        lcd.setCursor(0, 3);
         lcd.print("M.Atom: ");
-        lcd.print(tabelPeriodik[i].atomic_mass);
+        lcd.print(tabelPeriodik[i].atomic_mass, 3);
         
         ditemukan = true;
         break;
