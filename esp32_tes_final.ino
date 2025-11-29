@@ -96,7 +96,7 @@ void setup() {
   }
 
   Serial.println("DFPlayer berhasil terhubung!");
-  myDFPlayer.volume(30);
+  myDFPlayer.volume(23);
 }
 
 //
