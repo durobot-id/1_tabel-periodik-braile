@@ -148,6 +148,16 @@ void loop() {
           // Konversi ke integer untuk nomor lagu
           // int songNumber = atoi(index);
           int idx = computeIndexFromString(index);
+          int indexValue = atoi(index);
+          if(indexValue >= 510) {
+            idx -= 6;
+          }
+
+          if(indexValue >= 706) {
+            idx -= 2;
+          }
+          
+          // Serial.println(indexValue);
           // Serial.println(idx);
 
           // Serial.print("Memutar lagu nomor ");
