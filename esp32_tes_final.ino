@@ -123,6 +123,20 @@ void loop() {
           snprintf(index, sizeof(index), "%d%02d", mod, pinLabel);
 
           // Serial.print("Tombol baru ditekan: ");
+
+          if (strcmp(index, "502") == 0) {
+              strcpy(index, "416");
+          }
+          else if (strcmp(index, "503") == 0) {
+              strcpy(index, "414");
+          }
+          else if (strcmp(index, "504") == 0) {
+              strcpy(index, "412");
+          }
+          else if (strcmp(index, "505") == 0) {
+              strcpy(index, "400");
+          }
+          
           Serial.println(index);
 
           // Konversi ke integer untuk nomor lagu
