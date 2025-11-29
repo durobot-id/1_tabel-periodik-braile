@@ -136,6 +136,12 @@ void loop() {
           else if (strcmp(index, "505") == 0) {
               strcpy(index, "400");
           }
+          else if (strcmp(index, "506") == 0) {
+              strcpy(index, "413");
+          }
+          else if (strcmp(index, "400") == 0) {
+              strcpy(index, "410");
+          }
           
           Serial.println(index);
 
