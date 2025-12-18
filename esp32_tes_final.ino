@@ -142,6 +142,14 @@ void loop() {
           else if (strcmp(index, "400") == 0) {
               strcpy(index, "410");
           }
+          else if (strcmp(index, "407") == 0) {
+              strcpy(index, "404");
+          }
+          else if (strcmp(index, "404") == 0) {
+              strcpy(index, "405");
+          else if (strcmp(index, "405") == 0) {
+              strcpy(index, "407");
+          }
           
           Serial.println(index);
 
