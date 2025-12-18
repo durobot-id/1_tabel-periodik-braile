@@ -147,6 +147,7 @@ void loop() {
           }
           else if (strcmp(index, "404") == 0) {
               strcpy(index, "405");
+          }
           else if (strcmp(index, "405") == 0) {
               strcpy(index, "407");
           }
