@@ -129,8 +129,8 @@ void setup() {
 
   if (bootCount <= 1) {
     Serial.println("Restart...");
-    digitalWrite(LED_PIN, LOW);\
-    delay(100);
+    digitalWrite(LED_PIN, LOW);
+    delay(300);
     ESP.restart();
   }
   
