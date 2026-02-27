@@ -149,14 +149,40 @@ void centerText(int row, const char* text) {
   lcd.print(text);
 }
 
+void showLoadingAnimation() {
+  lcd.clear();
+  centerText(0, "INITIALIZING");
+  centerText(1, "SYSTEM...");
+  
+  lcd.setCursor(0, 2);
+  lcd.print("[");
+  lcd.setCursor(19, 2);
+  lcd.print("]");
+
+  int totalBlocks = 18;        // panjang progress bar
+  int delayPerBlock = 3000 / totalBlocks;  // total 3 detik
+
+  for (int i = 0; i <= totalBlocks; i++) {
+    lcd.setCursor(1 + i, 2);
+    lcd.write(byte(255));      // karakter full block
+    delay(delayPerBlock);
+  }
+
+  delay(300);
+}
+
 
 void setup() {
   Serial.begin(9600);       // ke PC
   Serial1.begin(115200, SERIAL_8N1, 20, 21); // RX=20, TX=21
 
-  lcd.init();        // Inisialisasi LCD
-  lcd.backlight();   // Nyalakan lampu LCD
+  lcd.init();
+  lcd.backlight();
 
+  // Tampilkan animasi loading 3 detik
+  showLoadingAnimation();
+
+  // Setelah loading selesai tampilkan welcome
   lcd.clear();
   centerText(0, "WELCOME TO");
   centerText(1, "TABEL PERIODIK");
