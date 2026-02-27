@@ -3,21 +3,19 @@
 #include "DFRobotDFPlayerMini.h"
 #include <Preferences.h>
 
-// RTC_DATA_ATTR int bootCount = 0;  // Disimpan di RTC memory
 Preferences prefs;
-#define LED_PIN 2   // Biasanya LED biru di GPIO 2
+
+#define LED_PIN 2
 
 //
 // ---- Konfigurasi PCF8575 ----
 //
 #define NUM_MODULES 8
 #define BASE_ADDR  0x20
-const unsigned long READ_INTERVAL = 50; // ms antar baca
+const unsigned long READ_INTERVAL = 50;
 unsigned long lastRead = 0;
 
 uint16_t lastState[NUM_MODULES];
-
-// Status tiap tombol (apakah sedang ditekan)
 bool isPressed[NUM_MODULES][16] = {false};
 
 //
@@ -25,9 +23,10 @@ bool isPressed[NUM_MODULES][16] = {false};
 //
 HardwareSerial mySerial(1);
 DFRobotDFPlayerMini myDFPlayer;
+bool dfConnected = false;
 
 //
-// ---- Fungsi Baca & Tulis PCF8575 ----
+// ---- Fungsi PCF8575 ----
 //
 uint16_t readPCF8575(uint8_t addr) {
   uint16_t value = 0xFFFF;
@@ -49,25 +48,15 @@ bool writePCF8575(uint8_t addr, uint16_t value) {
 
 int computeIndexFromString(const char* nilai) {
   int len = strlen(nilai);
-  if (len < 3) return -1; // error: input terlalu pendek
+  if (len < 3) return -1;
 
-  // ambil dua digit terakhir sebagai integer (mirip int(nilai[-2:]) di Python)
-  int lastTwo = atoi(nilai + len - 2); // "03" -> 3, "12" -> 12
+  int lastTwo = atoi(nilai + len - 2);
+  int angka = (lastTwo > 7) ? lastTwo - 2 : lastTwo;
 
-  // aturan: jika > 7 maka dikurangi 2
-  int angka;
-  if (lastTwo > 7) {
-    angka = lastTwo - 2;
-  } else {
-    angka = lastTwo;
-  }
-
-  // ambil karakter ke-3 dari belakang sebagai digit tunggal (mirip int(nilai[-3]))
   char ch = nilai[len - 3];
-  int digitTunggal = ch - '0'; // pastikan ch adalah '0'..'9'
-  if (digitTunggal < 0 || digitTunggal > 9) return -1; // error: bukan digit
+  int digitTunggal = ch - '0';
+  if (digitTunggal < 0 || digitTunggal > 9) return -1;
 
-  // hasil akhir
   int index = (digitTunggal * 16) + angka + 1;
   return index;
 }
@@ -76,11 +65,12 @@ int computeIndexFromString(const char* nilai) {
 // ---- Setup ----
 //
 void setup() {
+
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-  
+
   Serial.begin(115200);
-  while (!Serial) { delay(10); }
+  delay(500);
 
   Wire.begin();
   Wire.setClock(400000);
@@ -88,35 +78,40 @@ void setup() {
   // Inisialisasi PCF8575
   for (uint8_t i = 0; i < NUM_MODULES; i++) {
     uint8_t addr = BASE_ADDR + i;
-    writePCF8575(addr, 0xFFFF); // input pull-up
+    writePCF8575(addr, 0xFFFF);
     lastState[i] = readPCF8575(addr);
   }
 
-  Serial.println("=== MONITOR MULTI-TOMBOL + DFPlayer (Proteksi Per Tombol) ===");
+  Serial.println("=== MONITOR MULTI-TOMBOL + DFPlayer ===");
 
-  // Inisialisasi DFPlayer Mini
-  mySerial.begin(9600, SERIAL_8N1, 16, 17); // RX=16, TX=17
+  //
+  // ---- Inisialisasi DFPlayer dengan Delay & Retry ----
+  //
+  mySerial.begin(9600, SERIAL_8N1, 16, 17);
+
+  delay(300);   // ⬅️ WAJIB: beri waktu DFPlayer boot
+
   Serial.println("Menghubungkan ke DFPlayer...");
 
-  if (!myDFPlayer.begin(mySerial)) {
-    Serial.println("Gagal: Tidak ada respon dari DFPlayer!");
-    // while (true);
+  for (int i = 0; i < 5; i++) {
+    if (myDFPlayer.begin(mySerial)) {
+      dfConnected = true;
+      break;
+    }
+    Serial.println("Retry koneksi DFPlayer...");
+    delay(1000);
   }
 
-  Serial.println("DFPlayer berhasil terhubung!");
-  myDFPlayer.volume(23);
+  if (dfConnected) {
+    Serial.println("DFPlayer berhasil terhubung!");
+    myDFPlayer.volume(23);
+  } else {
+    Serial.println("DFPlayer gagal terhubung!");
+  }
 
-  
-  // bootCount++;
-  // Serial.print("Boot count: ");
-  // Serial.println(bootCount);
-
-  // if (bootCount <= 2) {
-  //   Serial.println("Melakukan restart...");
-  //   delay(1000);
-  //   ESP.restart();
-  // }
-
+  //
+  // ---- Boot Counter Aman ----
+  //
   prefs.begin("boot", false);
 
   int bootCount = prefs.getInt("count", 0);
@@ -127,19 +122,18 @@ void setup() {
 
   prefs.putInt("count", bootCount);
 
-  if (bootCount <= 1) {
-    Serial.println("Restart...");
-    digitalWrite(LED_PIN, LOW);
-    delay(300);
+  // Restart hanya sekali dan beri delay agar DFPlayer stabil
+  if (bootCount == 1) {
+    Serial.println("Restart aman...");
+    delay(300);   // ⬅️ penting
     ESP.restart();
   }
-  
-  digitalWrite(LED_PIN, LOW);
 
-  // Reset counter setelah selesai 2x restart
+  // Reset counter
   prefs.putInt("count", 0);
-
   prefs.end();
+
+  digitalWrite(LED_PIN, LOW);
 
   Serial.println("Boot normal");
 }
@@ -148,77 +142,55 @@ void setup() {
 // ---- Loop ----
 //
 void loop() {
+
   unsigned long now = millis();
   if (now - lastRead >= READ_INTERVAL) {
+
     lastRead = now;
 
     for (uint8_t mod = 0; mod < NUM_MODULES; mod++) {
+
       uint8_t addr = BASE_ADDR + mod;
       uint16_t val = readPCF8575(addr);
 
       for (uint8_t bit = 0; bit < 16; bit++) {
-        bool pressedNow = ((val & (1 << bit)) == 0); // aktif low
 
-        // 🔹 Jika baru ditekan (dan sebelumnya belum ditekan)
+        bool pressedNow = ((val & (1 << bit)) == 0);
+
         if (pressedNow && !isPressed[mod][bit]) {
+
           isPressed[mod][bit] = true;
 
           int pinLabel = (bit < 8) ? bit : bit + 2;
+
           char index[4];
           snprintf(index, sizeof(index), "%d%02d", mod, pinLabel);
 
-          // Serial.print("Tombol baru ditekan: ");
+          // mapping khusus
+          if (strcmp(index, "502") == 0) strcpy(index, "416");
+          else if (strcmp(index, "503") == 0) strcpy(index, "414");
+          else if (strcmp(index, "504") == 0) strcpy(index, "412");
+          else if (strcmp(index, "505") == 0) strcpy(index, "400");
+          else if (strcmp(index, "506") == 0) strcpy(index, "413");
+          else if (strcmp(index, "400") == 0) strcpy(index, "410");
+          else if (strcmp(index, "407") == 0) strcpy(index, "404");
+          else if (strcmp(index, "404") == 0) strcpy(index, "405");
+          else if (strcmp(index, "405") == 0) strcpy(index, "407");
 
-          if (strcmp(index, "502") == 0) {
-              strcpy(index, "416");
-          }
-          else if (strcmp(index, "503") == 0) {
-              strcpy(index, "414");
-          }
-          else if (strcmp(index, "504") == 0) {
-              strcpy(index, "412");
-          }
-          else if (strcmp(index, "505") == 0) {
-              strcpy(index, "400");
-          }
-          else if (strcmp(index, "506") == 0) {
-              strcpy(index, "413");
-          }
-          else if (strcmp(index, "400") == 0) {
-              strcpy(index, "410");
-          }
-          else if (strcmp(index, "407") == 0) {
-              strcpy(index, "404");
-          }
-          else if (strcmp(index, "404") == 0) {
-              strcpy(index, "405");
-          }
-          else if (strcmp(index, "405") == 0) {
-              strcpy(index, "407");
-          }
-          
+          Serial.print("Index: ");
           Serial.println(index);
 
-          // Konversi ke integer untuk nomor lagu
-          // int songNumber = atoi(index);
           int idx = computeIndexFromString(index);
           int indexValue = atoi(index);
-          if(indexValue >= 510) {
-            idx -= 6;
-          }
 
-          if(indexValue >= 706) {
-            idx -= 2;
-          }
-          
-          // Serial.println(indexValue);
-          // Serial.println(idx);
+          if (indexValue >= 510) idx -= 6;
+          if (indexValue >= 706) idx -= 2;
 
-          // Serial.print("Memutar lagu nomor ");
-          // Serial.println(songNumber);
-          myDFPlayer.play(idx);
+          if (dfConnected && idx > 0) {
+            myDFPlayer.play(idx);
+          }
         }
-        // 🔹 Jika tombol dilepas, reset flag
+
         else if (!pressedNow && isPressed[mod][bit]) {
           isPressed[mod][bit] = false;
         }
@@ -227,14 +199,4 @@ void loop() {
       lastState[mod] = val;
     }
   }
-
-  // // Opsional: pantau respon DFPlayer
-  // if (myDFPlayer.available()) {
-  //   uint8_t type = myDFPlayer.readType(); 
-  //   int value = myDFPlayer.read();
-  //   Serial.print("Respon DFPlayer -> Type: ");
-  //   Serial.print(type);
-  //   Serial.print(" Value: ");
-  //   Serial.println(value);
-  // }
 }
